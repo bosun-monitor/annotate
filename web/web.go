@@ -14,6 +14,7 @@ import (
 func Listen(listenAddr string, b []backend.Backend) error {
 	backends = b
 	router.HandleFunc("/", InsertAnnotation).Methods("POST")
+	router.HandleFunc("/{id}", GetAnnotation).Methods("GET")
 	http.Handle("/", router)
 	return http.ListenAndServe(listenAddr, nil)
 }
@@ -47,6 +48,7 @@ func InsertAnnotation(w http.ResponseWriter, req *http.Request) {
 	}
 	for _, b := range backends {
 	 	err := b.InsertAnnotation(&a)
+		//TODO Collect errors and insert into the backends that we can
 		if err != nil {
 			serveError(w, err)
 		}
@@ -59,6 +61,26 @@ func InsertAnnotation(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	return
 }
+
+func GetAnnotation(w http.ResponseWriter, req *http.Request) {
+	var a *annotate.Annotation
+	var err error
+	id := mux.Vars(req)["id"]
+	for _, b := range backends {
+		a, err = b.GetAnnotation(id)
+		//TODO Collect errors and insert into the backends that we can
+		if err != nil {
+			serveError(w, err)
+		}
+	}
+	err = json.NewEncoder(w).Encode(a)
+	if err != nil {
+		serveError(w, err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return
+}
+
 
 func serveError(w http.ResponseWriter, err error) {
 	http.Error(w, err.Error(), http.StatusInternalServerError)
