@@ -65,10 +65,9 @@ annotateApp.config(['$routeProvider', '$locationProvider', '$httpProvider', func
 }]);
 
 annotateApp.run(['$location', '$rootScope', function($location, $rootScope) {
-	$rootScope.$on('$routeChangeSuccess', function(event, current, previous) {
-		$rootScope.title = current.$$route.title;
-	});
-
+	// $rootScope.$on('$routeChangeSuccess', function(event, current, previous) {
+	// 	$rootScope.title = current.$$route.title;
+	// });
 }]);
 
 var annotateControllers = angular.module('annotateControllers', [])
@@ -85,14 +84,25 @@ annotateControllers.controller('AnnotateCtrl', ['$scope', '$route', '$http', '$r
 	};
 }]);
 
-annotateControllers.controller('CreateCtrl', ['$scope', '$http', function($scope, $http) {
-	var a = new Annotation();
-	a.setTime();
-	$scope.annotation = a;
-	$scope.submit = () => {
-		$http.post('/annotation', a)
-			.success(function(data) {
+annotateControllers.controller('CreateCtrl', ['$scope', '$http', '$routeParams', function($scope, $http, $p) {
+	if ($p.guid) {
+		$http.get('/annotation/' + $p.guid)
+			.success((data) => {
 				$scope.annotation = new Annotation(data);
+			})
+			.error((error) => {
+				$scope.error = error;
+			})
+	} else {
+		var a = new Annotation();
+		a.setTime();
+		$scope.annotation = a;
+	}
+	$scope.submit = () => {
+		$http.post('/annotation', $scope.annotation)
+			.success((data) => {
+				$scope.annotation = new Annotation(data);
+				console.log($scope.annotation.Id);
 			})
 			.error((error) => {
 				$scope.error = error;
@@ -102,7 +112,7 @@ annotateControllers.controller('CreateCtrl', ['$scope', '$http', function($scope
 
 annotateControllers.controller('ListCtrl', ['$scope', '$http', function($scope, $http) {
 		var EndDate = moment().format(timeFormat)
-		var StartDate = moment().subtract(3, "days").format(timeFormat)
+		var StartDate = moment().subtract(1, "hours").format(timeFormat)
 		var params = "StartDate=" + encodeURIComponent(StartDate) + "&EndDate=" + encodeURIComponent(EndDate);
 		$http.get('/annotation/query?' + params)
 			.success(function(data) {

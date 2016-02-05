@@ -23,11 +23,12 @@ const docType = "annotation"
 type Elastic struct {
 	*elastic.Client
 	index string
+	maxResults int
 }
 
 func NewElastic(urls []string, index string) (*Elastic, error) {
 	e, err := elastic.NewClient(elastic.SetURL(urls...))
-	return &Elastic{e, index}, err
+	return &Elastic{e, index, 200}, err
 }
 
 func (e *Elastic) InsertAnnotation(a *annotate.Annotation) error {
@@ -37,7 +38,7 @@ func (e *Elastic) InsertAnnotation(a *annotate.Annotation) error {
 
 func (e *Elastic) GetAnnotation(id string) (*annotate.Annotation, error) {
 	a := annotate.Annotation{}
-	if id != "" {
+	if id == "" {
 		return &a, fmt.Errorf("must provide id")
 	}
 	res, err := e.Get().Index(e.index).Type(docType).Id(id).Do()
@@ -54,8 +55,8 @@ func (e *Elastic) GetAnnotations(start, end *time.Time, source, host, creationUs
 	annotations := annotate.Annotations{}
 	s := elastic.NewSearchSource()
 	if start != nil && end != nil {
-		startQ := elastic.NewRangeQuery(annotate.StartDate).Gte(start)
-		endQ := elastic.NewRangeQuery(annotate.EndDate).Lte(end)
+		startQ := elastic.NewRangeQuery(annotate.EndDate).Gte(start)
+		endQ := elastic.NewRangeQuery(annotate.StartDate).Lte(end)
 		s = s.Query(elastic.NewBoolQuery().Must(startQ, endQ))
 	}
 	if source != "" {
@@ -73,9 +74,9 @@ func (e *Elastic) GetAnnotations(start, end *time.Time, source, host, creationUs
 	if category != "" {
 		s = s.Query(elastic.NewTermQuery(annotate.Category, category))
 	}
-	res, err := e.Search(e.index).Query(s).Do()
+	res, err := e.Search(e.index).Query(s).Size(e.maxResults).Do()
 	if err != nil {
-		return annotations, fmt.Errorf("%v: %v", err, res.Error.Reason)
+		return annotations, err
 	}
 	var aType annotate.Annotation
 	for _, item := range res.Each(reflect.TypeOf(aType)) {
@@ -94,7 +95,7 @@ func (e *Elastic) GetFieldValues(field string) ([]string, error) {
 			return terms, fmt.Errorf("invalid field %v", field)
 	}
 	termsAgg := elastic.NewTermsAggregation().Field(field)
-	res, err := e.Search(e.index).Aggregation(field, termsAgg).Do()
+	res, err := e.Search(e.index).Aggregation(field, termsAgg).Size(e.maxResults).Do()
 	if err != nil {
 		return terms, err
 	}

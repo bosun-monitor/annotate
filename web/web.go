@@ -15,7 +15,6 @@ import (
 
 
 // esc -o static.go -pkg web static/index.html static/css static/js
-// jsx
 func Listen(listenAddr string, b []backend.Backend) error {
 	backends = b
 	webFS := FS(true)
@@ -29,7 +28,7 @@ func Listen(listenAddr string, b []backend.Backend) error {
 	}
 	router.HandleFunc("/annotation", InsertAnnotation).Methods("POST")
 	router.HandleFunc("/annotation/query", GetAnnotations).Methods("GET")
-	router.HandleFunc("/annotations/{id}", GetAnnotation).Methods("GET")
+	router.HandleFunc("/annotation/{id}", GetAnnotation).Methods("GET")
 	router.HandleFunc("/annotation/values/{field}", GetFieldValues).Methods("GET")
 	router.PathPrefix("/static/").Handler(http.FileServer(webFS))
 	router.PathPrefix("/").HandlerFunc(Index).Methods("GET")
