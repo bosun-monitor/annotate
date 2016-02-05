@@ -52,6 +52,11 @@ func InsertAnnotation(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	log.Println(a)
+	err = json.NewEncoder(w).Encode(a)
+	if err != nil {
+		serveError(w, err)
+	}
+	w.Header().Set("Content-Type", "application/json")
 	return
 }
 

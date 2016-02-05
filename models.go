@@ -14,7 +14,7 @@ type Annotation struct {
 	StartDate    time.Time
 	EndDate      time.Time
 	CreationUser string
-	Url          url.URL
+	Url          *url.URL `json:"omitempty"`
 	Source       string
 	Host         string
 	Owner        string
@@ -44,15 +44,15 @@ func (a *Annotation) IsOneTimeSet() bool {
 }
 
 // Match Times Sets Both times to the greater of the two times
-func(a *Annotation) MatchTimes() {
-	if (a.StartDate.After(a.EndDate)) {
+func (a *Annotation) MatchTimes() {
+	if a.StartDate.After(a.EndDate) {
 		a.EndDate = a.StartDate
 		return
 	}
 	a.StartDate = a.EndDate
 }
 
-func(a *Annotation) ValidateTime() error {
+func (a *Annotation) ValidateTime() error {
 	t := time.Time{}
 	if a.StartDate.Equal(t) {
 		return fmt.Errorf("StartDate is not set")

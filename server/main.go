@@ -13,6 +13,11 @@ func main() {
 		log.Fatal(err)
 	}
 	backends := []backend.Backend{b}
+	for _, b := range backends {
+		if err := b.InitBackend(); err != nil {
+			log.Fatal(err)
+		}
+	}
 	go func() { log.Fatal(web.Listen(":8080", backends)) }()
 	select {}
 }

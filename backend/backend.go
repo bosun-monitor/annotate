@@ -7,7 +7,7 @@ import (
 
 type Backend interface {
 	InsertAnnotation(a *annotate.Annotation) error
-	InitBackend(table string) error
+	InitBackend() error
 }
 
 type Elastic struct {
@@ -21,19 +21,19 @@ func NewElastic(urls []string, index string) (*Elastic, error) {
 }
 
 func (e *Elastic) InsertAnnotation(a *annotate.Annotation) error {
-	_, err := e.Index().Index(e.index).Do()
+	_, err := e.Index().Index(e.index).BodyJson(a).Type("annotation").Do()
 	return err
 }
 
-func (e *Elastic) InitBackend(table string) error {
-	exists, err := e.IndexExists(table).Do()
+func (e *Elastic) InitBackend() error {
+	exists, err := e.IndexExists(e.index).Do()
 	if err != nil {
 		return err
 	}
 	if exists {
 		return nil
 	}
-	res, err := e.CreateIndex(table).Do()
+	res, err := e.CreateIndex(e.index).Do()
 	if res.Acknowledged && err != nil {
 		return nil
 	}
