@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
@@ -12,20 +13,39 @@ import (
 	"github.com/kylebrandt/annotate/backend"
 )
 
+
+// esc -o static.go -pkg web static/index.html static/css static/js
+// jsx
 func Listen(listenAddr string, b []backend.Backend) error {
 	backends = b
-	router.HandleFunc("/", InsertAnnotation).Methods("POST")
-	router.HandleFunc("/query", GetAnnotations).Methods("GET")
-	router.HandleFunc("/values/{field}", GetFieldValues).Methods("GET")
-	router.HandleFunc("/{id}", GetAnnotation).Methods("GET")
+	webFS := FS(true)
+	index, err := webFS.Open("/static/index.html")
+	if err != nil {
+		return fmt.Errorf("Error opening static file: %v", err)
+	}
+	indexHTML, err = ioutil.ReadAll(index)
+	if err != nil {
+		return err
+	}
+	router.HandleFunc("/annotation", InsertAnnotation).Methods("POST")
+	router.HandleFunc("/annotation/query", GetAnnotations).Methods("GET")
+	router.HandleFunc("/annotations/{id}", GetAnnotation).Methods("GET")
+	router.HandleFunc("/annotation/values/{field}", GetFieldValues).Methods("GET")
+	router.PathPrefix("/static/").Handler(http.FileServer(webFS))
+	router.PathPrefix("/").HandlerFunc(Index).Methods("GET")
 	http.Handle("/", router)
 	return http.ListenAndServe(listenAddr, nil)
 }
 
+func Index(w http.ResponseWriter, r *http.Request) {
+	w.Write(indexHTML)
+}
+
 //Web Section
 var (
-	router   = mux.NewRouter()
-	backends = []backend.Backend{}
+	router    = mux.NewRouter()
+	indexHTML []byte
+	backends  = []backend.Backend{}
 )
 
 func InsertAnnotation(w http.ResponseWriter, req *http.Request) {

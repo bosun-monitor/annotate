@@ -2,7 +2,6 @@ package annotate
 
 import (
 	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/twinj/uuid"
@@ -14,7 +13,7 @@ type Annotation struct {
 	StartDate    time.Time
 	EndDate      time.Time
 	CreationUser string
-	Url          *url.URL `json:"omitempty"`
+	Url          string
 	Source       string
 	Host         string
 	Owner        string
