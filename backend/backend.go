@@ -14,6 +14,7 @@ type Backend interface {
 	InsertAnnotation(a *annotate.Annotation) error
 	GetAnnotation(id string) (*annotate.Annotation, error)
 	GetAnnotations(start, end *time.Time, source, host, creationUser, owner string) (annotate.Annotations, error)
+	GetFieldValues(property string) ([]string, error)
 	InitBackend() error
 }
 
@@ -79,6 +80,31 @@ func (e *Elastic) GetAnnotations(start, end *time.Time, source, host, creationUs
 		annotations = append(annotations, a)
 	}
 	return annotations, nil
+}
+
+func (e *Elastic) GetFieldValues(field string) ([]string, error) {
+	terms := []string{}
+	switch field {
+		case annotate.Source, annotate.Host, annotate.CreationUser, annotate.Owner:
+			//continue
+		default:
+			return terms, fmt.Errorf("invalid field %v", field)
+	}
+	termsAgg := elastic.NewTermsAggregation().Field(field)
+	res, err := e.Search(e.index).Aggregation(field, termsAgg).Do()
+	if err != nil {
+		return terms, err
+	}
+	b, found := res.Aggregations.Terms(field)
+	if !found {
+		return terms, fmt.Errorf("expected aggregation %v not found in result", field)
+	}
+	for _, bucket := range b.Buckets {
+		if v, ok := bucket.Key.(string); ok {
+			terms = append(terms, v)
+		}
+	}
+	return terms, nil
 }
 
 func (e *Elastic) InitBackend() error {

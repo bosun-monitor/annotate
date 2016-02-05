@@ -16,6 +16,7 @@ func Listen(listenAddr string, b []backend.Backend) error {
 	backends = b
 	router.HandleFunc("/", InsertAnnotation).Methods("POST")
 	router.HandleFunc("/query", GetAnnotations).Methods("GET")
+	router.HandleFunc("/values/{field}", GetFieldValues).Methods("GET")
 	router.HandleFunc("/{id}", GetAnnotation).Methods("GET")
 	http.Handle("/", router)
 	return http.ListenAndServe(listenAddr, nil)
@@ -67,6 +68,7 @@ func InsertAnnotation(w http.ResponseWriter, req *http.Request) {
 func GetAnnotation(w http.ResponseWriter, req *http.Request) {
 	var a *annotate.Annotation
 	var err error
+	w.Header().Set("Content-Type", "application/json")
 	id := mux.Vars(req)["id"]
 	for _, b := range backends {
 		a, err = b.GetAnnotation(id)
@@ -79,7 +81,26 @@ func GetAnnotation(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		serveError(w, err)
 	}
+	return
+}
+
+func GetFieldValues(w http.ResponseWriter, req *http.Request) {
+	values := []string{}
+	var err error
 	w.Header().Set("Content-Type", "application/json")
+	field := mux.Vars(req)["field"]
+	for _, b := range backends {
+		values, err = b.GetFieldValues(field)
+		//TODO Collect errors and insert into the backends that we can
+		//TODO Unique Results from all backends
+		if err != nil {
+			serveError(w, err)
+		}
+	}
+	err = json.NewEncoder(w).Encode(values)
+	if err != nil {
+		serveError(w, err)
+	}
 	return
 }
 
