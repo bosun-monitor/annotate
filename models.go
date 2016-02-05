@@ -21,8 +21,13 @@ type Annotation struct {
 }
 
 const (
+	Message = "Message"
 	StartDate = "StartDate"
 	EndDate = "EndDate"
+	Source = "Source"
+	Host = "Host"
+	CreationUser = "CreationUser"
+	Owner = "Owner"
 )
 
 type Annotations []Annotation

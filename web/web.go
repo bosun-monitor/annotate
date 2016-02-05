@@ -15,7 +15,7 @@ import (
 func Listen(listenAddr string, b []backend.Backend) error {
 	backends = b
 	router.HandleFunc("/", InsertAnnotation).Methods("POST")
-	router.HandleFunc("/time", GetAnnotations).Methods("GET") // StartDate, EndDate
+	router.HandleFunc("/query", GetAnnotations).Methods("GET")
 	router.HandleFunc("/{id}", GetAnnotation).Methods("GET")
 	http.Handle("/", router)
 	return http.ListenAndServe(listenAddr, nil)
@@ -85,24 +85,45 @@ func GetAnnotation(w http.ResponseWriter, req *http.Request) {
 
 func GetAnnotations(w http.ResponseWriter, req *http.Request) {
 	var a annotate.Annotations
-	startP := req.URL.Query().Get(annotate.StartDate)
-	start, err := time.Parse(time.RFC3339Nano, startP)
+	var startT *time.Time
+	var endT *time.Time
+	var err error
 	w.Header().Set("Content-Type", "application/json")
-	if err != nil {
-		serveError(w, fmt.Errorf("error parsing EndDate %v: %v", startP, err))
+
+	// Time
+	start := req.URL.Query().Get(annotate.StartDate)
+	end := req.URL.Query().Get(annotate.EndDate)
+	if start != "" {
+		s, err := time.Parse(time.RFC3339Nano, start)
+		if err != nil {
+			serveError(w, fmt.Errorf("error parsing StartDate %v: %v", start, err))
+		}
+		startT = &s
 	}
-	endP := req.URL.Query().Get(annotate.EndDate)
-	end, err := time.Parse(time.RFC3339Nano, endP)
-	if err != nil {
-		serveError(w, fmt.Errorf("error parsing EndDate %v: %v", endP, err))
+	if end != "" {
+		e, err := time.Parse(time.RFC3339Nano, end)
+		if err != nil {
+			serveError(w, fmt.Errorf("error parsing EndDate %v: %v", end, err))
+		}
+		endT = &e
 	}
+
+	// Other Fields
+	source := req.URL.Query().Get(annotate.Source)
+	host := req.URL.Query().Get(annotate.Host)
+	creationUser := req.URL.Query().Get(annotate.CreationUser)
+	owner := req.URL.Query().Get(annotate.Owner)
+
+	// Execute
 	for _, b := range backends {
-		a, err = b.GetAnnotations(start, end)
+		a, err = b.GetAnnotations(startT, endT, source, host, creationUser, owner)
 		//TODO Collect errors and insert into the backends that we can
 		if err != nil {
 			serveError(w, err)
 		}
 	}
+
+	// Encode
 	err = json.NewEncoder(w).Encode(a)
 	if err != nil {
 		serveError(w, err)
