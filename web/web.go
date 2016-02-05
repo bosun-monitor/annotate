@@ -134,10 +134,11 @@ func GetAnnotations(w http.ResponseWriter, req *http.Request) {
 	host := req.URL.Query().Get(annotate.Host)
 	creationUser := req.URL.Query().Get(annotate.CreationUser)
 	owner := req.URL.Query().Get(annotate.Owner)
+	category := req.URL.Query().Get(annotate.Category)
 
 	// Execute
 	for _, b := range backends {
-		a, err = b.GetAnnotations(startT, endT, source, host, creationUser, owner)
+		a, err = b.GetAnnotations(startT, endT, source, host, creationUser, owner, category)
 		//TODO Collect errors and insert into the backends that we can
 		if err != nil {
 			serveError(w, err)

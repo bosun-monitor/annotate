@@ -18,16 +18,18 @@ type Annotation struct {
 	Source       string
 	Host         string
 	Owner        string
+	Category     string
 }
 
 const (
-	Message = "Message"
-	StartDate = "StartDate"
-	EndDate = "EndDate"
-	Source = "Source"
-	Host = "Host"
+	Message      = "Message"
+	StartDate    = "StartDate"
+	EndDate      = "EndDate"
+	Source       = "Source"
+	Host         = "Host"
 	CreationUser = "CreationUser"
-	Owner = "Owner"
+	Owner        = "Owner"
+	Category     = "Cateogry"
 )
 
 type Annotations []Annotation

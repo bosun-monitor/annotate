@@ -13,8 +13,8 @@ import (
 type Backend interface {
 	InsertAnnotation(a *annotate.Annotation) error
 	GetAnnotation(id string) (*annotate.Annotation, error)
-	GetAnnotations(start, end *time.Time, source, host, creationUser, owner string) (annotate.Annotations, error)
-	GetFieldValues(property string) ([]string, error)
+	GetAnnotations(start, end *time.Time, source, host, creationUser, owner, category string) (annotate.Annotations, error)
+	GetFieldValues(field string) ([]string, error)
 	InitBackend() error
 }
 
@@ -50,7 +50,7 @@ func (e *Elastic) GetAnnotation(id string) (*annotate.Annotation, error) {
 	return &a, nil
 }
 
-func (e *Elastic) GetAnnotations(start, end *time.Time, source, host, creationUser, owner string) (annotate.Annotations, error) {
+func (e *Elastic) GetAnnotations(start, end *time.Time, source, host, creationUser, owner, category string) (annotate.Annotations, error) {
 	annotations := annotate.Annotations{}
 	s := elastic.NewSearchSource()
 	if start != nil && end != nil {
@@ -70,6 +70,9 @@ func (e *Elastic) GetAnnotations(start, end *time.Time, source, host, creationUs
 	if owner != "" {
 		s = s.Query(elastic.NewTermQuery(annotate.Owner, owner))
 	}
+	if category != "" {
+		s = s.Query(elastic.NewTermQuery(annotate.Category, category))
+	}
 	res, err := e.Search(e.index).Query(s).Do()
 	if err != nil {
 		return annotations, fmt.Errorf("%v: %v", err, res.Error.Reason)
@@ -85,7 +88,7 @@ func (e *Elastic) GetAnnotations(start, end *time.Time, source, host, creationUs
 func (e *Elastic) GetFieldValues(field string) ([]string, error) {
 	terms := []string{}
 	switch field {
-		case annotate.Source, annotate.Host, annotate.CreationUser, annotate.Owner:
+		case annotate.Source, annotate.Host, annotate.CreationUser, annotate.Owner, annotate.Category:
 			//continue
 		default:
 			return terms, fmt.Errorf("invalid field %v", field)
