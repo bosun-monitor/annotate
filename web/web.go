@@ -2,18 +2,20 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/kylebrandt/annotate"
 	"github.com/kylebrandt/annotate/backend"
-
 )
 
 func Listen(listenAddr string, b []backend.Backend) error {
 	backends = b
 	router.HandleFunc("/", InsertAnnotation).Methods("POST")
+	router.HandleFunc("/time", GetAnnotations).Methods("GET") // StartDate, EndDate
 	router.HandleFunc("/{id}", GetAnnotation).Methods("GET")
 	http.Handle("/", router)
 	return http.ListenAndServe(listenAddr, nil)
@@ -21,7 +23,7 @@ func Listen(listenAddr string, b []backend.Backend) error {
 
 //Web Section
 var (
-	router = mux.NewRouter()
+	router   = mux.NewRouter()
 	backends = []backend.Backend{}
 )
 
@@ -47,7 +49,7 @@ func InsertAnnotation(w http.ResponseWriter, req *http.Request) {
 		a.SetGUID()
 	}
 	for _, b := range backends {
-	 	err := b.InsertAnnotation(&a)
+		err := b.InsertAnnotation(&a)
 		//TODO Collect errors and insert into the backends that we can
 		if err != nil {
 			serveError(w, err)
@@ -81,6 +83,32 @@ func GetAnnotation(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
+func GetAnnotations(w http.ResponseWriter, req *http.Request) {
+	var a annotate.Annotations
+	startP := req.URL.Query().Get(annotate.StartDate)
+	start, err := time.Parse(time.RFC3339Nano, startP)
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		serveError(w, fmt.Errorf("error parsing EndDate %v: %v", startP, err))
+	}
+	endP := req.URL.Query().Get(annotate.EndDate)
+	end, err := time.Parse(time.RFC3339Nano, endP)
+	if err != nil {
+		serveError(w, fmt.Errorf("error parsing EndDate %v: %v", endP, err))
+	}
+	for _, b := range backends {
+		a, err = b.GetAnnotations(start, end)
+		//TODO Collect errors and insert into the backends that we can
+		if err != nil {
+			serveError(w, err)
+		}
+	}
+	err = json.NewEncoder(w).Encode(a)
+	if err != nil {
+		serveError(w, err)
+	}
+	return
+}
 
 func serveError(w http.ResponseWriter, err error) {
 	http.Error(w, err.Error(), http.StatusInternalServerError)

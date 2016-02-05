@@ -20,6 +20,13 @@ type Annotation struct {
 	Owner        string
 }
 
+const (
+	StartDate = "StartDate"
+	EndDate = "EndDate"
+)
+
+type Annotations []Annotation
+
 func (a *Annotation) SetGUID() error {
 	if a.Id != "" {
 		return fmt.Errorf("GUID already set: %v", a.Id)

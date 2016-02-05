@@ -3,6 +3,8 @@ package backend
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"time"
 
 	"github.com/kylebrandt/annotate"
 	elastic "gopkg.in/olivere/elastic.v3"
@@ -11,6 +13,7 @@ import (
 type Backend interface {
 	InsertAnnotation(a *annotate.Annotation) error
 	GetAnnotation(id string) (*annotate.Annotation, error)
+	GetAnnotations(start, end time.Time) (annotate.Annotations, error)
 	InitBackend() error
 }
 
@@ -32,7 +35,6 @@ func (e *Elastic) InsertAnnotation(a *annotate.Annotation) error {
 }
 
 func (e *Elastic) GetAnnotation(id string) (*annotate.Annotation, error) {
-	//_, err := e.Index().Index(e.index).BodyJson(a).Type("annotation").Do()
 	a := annotate.Annotation{}
 	res, err := e.Get().Index(e.index).Type(docType).Id(id).Do()
 	if err != nil {
@@ -42,6 +44,23 @@ func (e *Elastic) GetAnnotation(id string) (*annotate.Annotation, error) {
 		return &a, err
 	}
 	return &a, nil
+}
+
+func (e *Elastic) GetAnnotations(start, end time.Time) (annotate.Annotations, error) {
+	annotations := annotate.Annotations{}
+	startQ := elastic.NewRangeQuery(annotate.StartDate).Gte(start)
+	endQ := elastic.NewRangeQuery(annotate.EndDate).Lte(end)
+	and := elastic.NewBoolQuery().Must(startQ, endQ)
+	res, err := e.Search(e.index).Query(and).Do()
+	if err != nil {
+		return annotations, fmt.Errorf("%v: %v", err, res.Error.Reason)
+	}
+	var aType annotate.Annotation
+	for _, item := range res.Each(reflect.TypeOf(aType)) {
+		a := item.(annotate.Annotation)
+		annotations = append(annotations, a)
+	}
+	return annotations, nil
 }
 
 func (e *Elastic) InitBackend() error {
