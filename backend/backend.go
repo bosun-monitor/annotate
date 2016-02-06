@@ -14,7 +14,7 @@ type Backend interface {
 	InsertAnnotation(a *annotate.Annotation) error
 	GetAnnotation(id string) (*annotate.Annotation, error)
 	GetAnnotations(start, end *time.Time, source, host, creationUser, owner, category string) (annotate.Annotations, error)
-	DeleteAnnotation(id string) (error)
+	DeleteAnnotation(id string) error
 	GetFieldValues(field string) ([]string, error)
 	InitBackend() error
 }
@@ -23,7 +23,7 @@ const docType = "annotation"
 
 type Elastic struct {
 	*elastic.Client
-	index string
+	index      string
 	maxResults int
 }
 
@@ -99,10 +99,10 @@ func (e *Elastic) GetAnnotations(start, end *time.Time, source, host, creationUs
 func (e *Elastic) GetFieldValues(field string) ([]string, error) {
 	terms := []string{}
 	switch field {
-		case annotate.Source, annotate.Host, annotate.CreationUser, annotate.Owner, annotate.Category:
-			//continue
-		default:
-			return terms, fmt.Errorf("invalid field %v", field)
+	case annotate.Source, annotate.Host, annotate.CreationUser, annotate.Owner, annotate.Category:
+		//continue
+	default:
+		return terms, fmt.Errorf("invalid field %v", field)
 	}
 	termsAgg := elastic.NewTermsAggregation().Field(field)
 	res, err := e.Search(e.index).Aggregation(field, termsAgg).Size(e.maxResults).Do()
@@ -126,13 +126,37 @@ func (e *Elastic) InitBackend() error {
 	if err != nil {
 		return err
 	}
-	if exists {
-		return nil
+	if !exists {
+		res, err := e.CreateIndex(e.index).Do()
+		if (res != nil && !res.Acknowledged) || err != nil {
+			return fmt.Errorf("failed to create elastic mapping (ack: %v): %v", res != nil && res.Acknowledged, err)
+		}
 	}
-	res, err := e.CreateIndex(e.index).Do()
-	if res.Acknowledged && err != nil {
-		return nil
+	stringNA := map[string]string{
+		"type":  "string",
+		"index": "not_analyzed",
 	}
-	// TODO Create a Elastic Mapping
+	stringA := map[string]string{
+		"type": "string",
+	}
+	date := map[string]string{
+		"type": "date",
+	}
+	p := make(map[string]interface{})
+	p[annotate.Message] = stringA
+	p[annotate.StartDate] = date
+	p[annotate.EndDate] = date
+	p[annotate.Source] = stringNA
+	p[annotate.Host] = stringNA
+	p[annotate.CreationUser] = stringNA
+	p[annotate.Owner] = stringNA
+	p[annotate.Category] = stringNA
+	mapping := make(map[string]interface{})
+	mapping["properties"] = p
+	q := e.PutMapping().Index(e.index).Type(docType).BodyJson(mapping)
+	res, err := q.Do()
+	if (res != nil && !res.Acknowledged) || err != nil {
+		return fmt.Errorf("failed to create elastic mapping (ack: %v): %v", res != nil && res.Acknowledged, err)
+	}
 	return err
 }
