@@ -15,7 +15,7 @@ class Annotation {
 		this.Message = a.Message || "";
 		this.StartDate = a.StartDate || "";
 		this.EndDate = a.EndDate || "";
-		this.CreationUser = a.CreationUser;
+		this.CreationUser = a.CreationUser || getUser() || "";
 		this.Url = a.Url || "";
 		this.Source = a.Source || "annotate-ui";
 		this.Host = a.Host || "";
@@ -112,6 +112,9 @@ annotateControllers.controller('CreateCtrl', ['$scope', '$http', '$routeParams',
 		})
 
 	$scope.submit = () => {
+		if ($scope.annotation.Id == "" && $scope.annotation.CreationUser != "") {
+			setUser($scope.annotation.CreationUser);
+		}
 		$http.post('/annotation', $scope.annotation)
 			.success((data) => {
 				$scope.annotation = new Annotation(data);
@@ -148,3 +151,40 @@ annotateControllers.controller('ListCtrl', ['$scope', '$http', function($scope, 
 				})
 		}
 }]);
+
+
+// From http://www.quirksmode.org/js/cookies.html
+
+function createCookie(name, value, days) {
+    var expires;
+    if (days) {
+        var date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toGMTString();
+    }
+    else {
+        expires = "";
+    }
+    document.cookie = escape(name) + "=" + escape(value) + expires + "; path=/";
+}
+function readCookie(name) {
+    var nameEQ = escape(name) + "=";
+    var ca = document.cookie.split(';');
+    for (var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) === ' ')
+            c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0)
+            return unescape(c.substring(nameEQ.length, c.length));
+    }
+    return null;
+}
+function eraseCookie(name) {
+    createCookie(name, "", -1);
+}
+function getUser() {
+    return readCookie('action-user');
+}
+function setUser(name) {
+    createCookie('action-user', name, 1000);
+}
