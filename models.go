@@ -38,7 +38,7 @@ const (
 	Host         = "Host"
 	CreationUser = "CreationUser"
 	Owner        = "Owner"
-	Category     = "Cateogry"
+	Category     = "Category"
 )
 
 type Annotations []Annotation

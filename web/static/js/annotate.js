@@ -98,11 +98,24 @@ annotateControllers.controller('CreateCtrl', ['$scope', '$http', '$routeParams',
 		a.setTime();
 		$scope.annotation = a;
 	}
+	$http.get('/annotation/values/Owner')
+		.success((data) => {
+			$scope.owners = data;
+		})
+	$http.get('/annotation/values/Category')
+		.success((data) => {
+			$scope.categories = data;
+		})
+	$http.get('/annotation/values/Host')
+		.success((data) => {
+			$scope.hosts = data;
+		})
+
 	$scope.submit = () => {
 		$http.post('/annotation', $scope.annotation)
 			.success((data) => {
 				$scope.annotation = new Annotation(data);
-				console.log($scope.annotation.Id);
+				$scope.error = "";
 			})
 			.error((error) => {
 				$scope.error = error;
@@ -130,6 +143,7 @@ annotateControllers.controller('ListCtrl', ['$scope', '$http', function($scope, 
 					$scope.status = error;
 				})
 				.success(() => {
+					// Remove deleted item from scope model
 					$scope.annotations = _.without($scope.annotations, _.findWhere($scope.annotations, {"Id": id}));
 				})
 		}
