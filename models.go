@@ -7,11 +7,21 @@ import (
 	"github.com/twinj/uuid"
 )
 
+
+
+type RFC3339 struct {
+	time.Time
+}
+
+func (t RFC3339) MarshalJSON() ([]byte, error) {
+    return []byte(`"` + t.Format(time.RFC3339) + `"`), nil
+}
+
 type Annotation struct {
 	Id           string
 	Message      string
-	StartDate    time.Time
-	EndDate      time.Time
+	StartDate    RFC3339
+	EndDate      RFC3339
 	CreationUser string
 	Url          string
 	Source       string
@@ -42,7 +52,7 @@ func (a *Annotation) SetGUID() error {
 }
 
 func (a *Annotation) SetNow() {
-	a.StartDate = time.Now()
+	a.StartDate.Time = time.Now()
 	a.EndDate = a.StartDate
 }
 
@@ -58,7 +68,7 @@ func (a *Annotation) IsOneTimeSet() bool {
 
 // Match Times Sets Both times to the greater of the two times
 func (a *Annotation) MatchTimes() {
-	if a.StartDate.After(a.EndDate) {
+	if a.StartDate.After(a.EndDate.Time) {
 		a.EndDate = a.StartDate
 		return
 	}
@@ -73,7 +83,7 @@ func (a *Annotation) ValidateTime() error {
 	if a.EndDate.Equal(t) {
 		return fmt.Errorf("StartDate is not set")
 	}
-	if a.EndDate.Before(a.StartDate) {
+	if a.EndDate.Before(a.StartDate.Time) {
 		return fmt.Errorf("EndDate is before StartDate")
 	}
 	return nil

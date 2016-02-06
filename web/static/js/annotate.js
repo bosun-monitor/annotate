@@ -6,7 +6,8 @@ var annotateApp = angular.module('annotateApp', [
 	'mgcrea.ngStrap',
 ]);
 
-var timeFormat = 'YYYY-MM-DDTHH:mm:ss.SSSSSSSSSZ';
+var timeFormat = 'YYYY-MM-DDTHH:mm:ssZ';
+
 
 class Annotation {
 	constructor(a) {

@@ -134,14 +134,14 @@ func GetAnnotations(w http.ResponseWriter, req *http.Request) {
 	start := req.URL.Query().Get(annotate.StartDate)
 	end := req.URL.Query().Get(annotate.EndDate)
 	if start != "" {
-		s, err := time.Parse(time.RFC3339Nano, start)
+		s, err := time.Parse(time.RFC3339, start)
 		if err != nil {
 			serveError(w, fmt.Errorf("error parsing StartDate %v: %v", start, err))
 		}
 		startT = &s
 	}
 	if end != "" {
-		e, err := time.Parse(time.RFC3339Nano, end)
+		e, err := time.Parse(time.RFC3339, end)
 		if err != nil {
 			serveError(w, fmt.Errorf("error parsing EndDate %v: %v", end, err))
 		}
