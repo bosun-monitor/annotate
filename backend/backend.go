@@ -14,6 +14,7 @@ type Backend interface {
 	InsertAnnotation(a *annotate.Annotation) error
 	GetAnnotation(id string) (*annotate.Annotation, error)
 	GetAnnotations(start, end *time.Time, source, host, creationUser, owner, category string) (annotate.Annotations, error)
+	DeleteAnnotation(id string) (error)
 	GetFieldValues(field string) ([]string, error)
 	InitBackend() error
 }
@@ -49,6 +50,15 @@ func (e *Elastic) GetAnnotation(id string) (*annotate.Annotation, error) {
 		return &a, err
 	}
 	return &a, nil
+}
+
+func (e *Elastic) DeleteAnnotation(id string) error {
+	_, err := e.Delete().Index(e.index).Type(docType).Id(id).Do()
+	if err != nil {
+		return err
+	}
+	return nil
+	//TODO? Check res.Found?
 }
 
 func (e *Elastic) GetAnnotations(start, end *time.Time, source, host, creationUser, owner, category string) (annotate.Annotations, error) {

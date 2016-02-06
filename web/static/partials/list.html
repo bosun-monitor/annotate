@@ -22,7 +22,8 @@
 			<tbody>
 				<tr ng-repeat="a in annotations">
 					<td>
-						<a ng-href="{{'/?guid=' + a.Id}}">Edit</a>
+						<a ng-href="{{'/?guid=' + a.Id}}">Edit </a>
+						<a ng-click="delete(a.Id)">Delete </a>
 					</td>
 					<td ng-bind="a.StartDate"></td>
 					<td ng-bind="a.EndDate"></td>

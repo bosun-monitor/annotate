@@ -8,7 +8,6 @@ var annotateApp = angular.module('annotateApp', [
 
 var timeFormat = 'YYYY-MM-DDTHH:mm:ssZ';
 
-
 class Annotation {
 	constructor(a) {
 		a = a || {};
@@ -112,14 +111,26 @@ annotateControllers.controller('CreateCtrl', ['$scope', '$http', '$routeParams',
 }]);
 
 annotateControllers.controller('ListCtrl', ['$scope', '$http', function($scope, $http) {
-		var EndDate = moment().format(timeFormat)
-		var StartDate = moment().subtract(1, "hours").format(timeFormat)
+		var EndDate = moment().format(timeFormat);
+		var StartDate = moment().subtract(1, "hours").format(timeFormat);
 		var params = "StartDate=" + encodeURIComponent(StartDate) + "&EndDate=" + encodeURIComponent(EndDate);
-		$http.get('/annotation/query?' + params)
-			.success(function(data) {
-				$scope.annotations = data;
-			})
-			.error(function(error) {
-				$scope.status = 'Unable to fetch annotations: ' + error;
-			});
+		var get = () => {
+			$http.get('/annotation/query?' + params)
+				.success(function(data) {
+					$scope.annotations = data;
+				})
+				.error(function(error) {
+					$scope.status = 'Unable to fetch annotations: ' + error;
+				});
+		}
+		get();
+		$scope.delete = (id) => {
+			$http.delete('/annotation/' + id)
+				.error((error) => {
+					$scope.status = error;
+				})
+				.success(() => {
+					$scope.annotations = _.without($scope.annotations, _.findWhere($scope.annotations, {"Id": id}));
+				})
+		}
 }]);

@@ -29,6 +29,7 @@ func Listen(listenAddr string, b []backend.Backend) error {
 	router.HandleFunc("/annotation", InsertAnnotation).Methods("POST")
 	router.HandleFunc("/annotation/query", GetAnnotations).Methods("GET")
 	router.HandleFunc("/annotation/{id}", GetAnnotation).Methods("GET")
+	router.HandleFunc("/annotation/{id}", DeleteAnnotation).Methods("DELETE")
 	router.HandleFunc("/annotation/values/{field}", GetFieldValues).Methods("GET")
 	router.PathPrefix("/static/").Handler(http.FileServer(webFS))
 	router.PathPrefix("/").HandlerFunc(Index).Methods("GET")
@@ -101,6 +102,20 @@ func GetAnnotation(w http.ResponseWriter, req *http.Request) {
 		serveError(w, err)
 	}
 	return
+}
+
+func DeleteAnnotation(w http.ResponseWriter, req *http.Request)  {
+	id := mux.Vars(req)["id"]
+	if id == "" {
+		serveError(w, fmt.Errorf("id required"))
+	}
+	for _, b := range backends {
+		err := b.DeleteAnnotation(id)
+		//TODO Make sure it is deleted from at least one backend?
+		if err != nil {
+			serveError(w, err)
+		}
+	}
 }
 
 func GetFieldValues(w http.ResponseWriter, req *http.Request) {
