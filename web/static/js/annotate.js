@@ -129,6 +129,13 @@ annotateControllers.controller('CreateCtrl', ['$scope', '$http', '$routeParams',
 annotateControllers.controller('ListCtrl', ['$scope', '$http', function($scope, $http) {
 		var EndDate = moment().format(timeFormat);
 		var StartDate = moment().subtract(1, "hours").format(timeFormat);
+		$scope.url = (url) => {
+			url = url.replace(/.*?:\/\//g, "")
+			if (url.length > 20) {
+				url = url.substring(0, 20-3) + "..."
+			}
+			return url;
+		}
 		var params = "StartDate=" + encodeURIComponent(StartDate) + "&EndDate=" + encodeURIComponent(EndDate);
 		var get = () => {
 			$http.get('/annotation/query?' + params)

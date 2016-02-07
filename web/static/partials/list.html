@@ -16,6 +16,7 @@
 					<th>CreationUser</th>
 					<th>Owner</th>
 					<th>Category</th>
+					<th>Url</th>
 					<th>Message</th>
 				</tr>
 			</thead>
@@ -32,6 +33,7 @@
 					<td ng-bind="a.CreationUser"></td>
 					<td ng-bind="a.Owner"></td>
 					<td ng-bind="a.Category"></td>
+					<td><a ng-show="a.Url" ng-href="{{a.Url}}">{{url(a.Url)}}</a></td>
 					<td ng-bind="a.Message"></td>
 				</tr>
 			</tbody>
