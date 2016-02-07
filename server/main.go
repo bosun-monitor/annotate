@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 
 	"github.com/BurntSushi/toml"
@@ -18,10 +19,14 @@ type ElasticCluster struct {
 	Index   string
 }
 
+
+var confFlag = flag.String("conf", "config.toml", "config file")
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	flag.Parse()
 	var c Conf
-	if _, err := toml.DecodeFile("./config.toml", &c); err != nil {
+	if _, err := toml.DecodeFile(*confFlag, &c); err != nil {
 		log.Fatal("failed to decode config file: ", err)
 	}
 	backends := []backend.Backend{}
@@ -37,6 +42,13 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-	go func() { log.Fatal(web.Listen(":8080", backends)) }()
+	go func() { log.Fatal(web.Listen(c.ListenAddress, backends)) }()
 	select {}
 }
+
+// Reference Conf
+//ListenAddress = ":8080"
+
+//[[ElasticClusters]]
+//Servers = [ "http://ny-devlogstash04:9200" ]
+//Index = "annotate"
