@@ -26,8 +26,8 @@
 						<a ng-href="{{'/?guid=' + a.Id}}">Edit </a>
 						<a ng-click="delete(a.Id)">Delete </a>
 					</td>
-					<td ng-bind="a.StartDate"></td>
-					<td ng-bind="a.EndDate"></td>
+					<td ng-bind="a.StartDate" ng-style="active(a) && {'font-weight': 'bold'}"></td>
+					<td ng-bind="a.EndDate" ng-style="active(a) && {'font-weight': 'bold'}"></td>
 					<td ng-bind="a.Source"></td>
 					<td ng-bind="a.Host"></td>
 					<td ng-bind="a.CreationUser"></td>

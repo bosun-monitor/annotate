@@ -136,6 +136,10 @@ annotateControllers.controller('ListCtrl', ['$scope', '$http', function($scope, 
 			}
 			return url;
 		}
+		$scope.active = (a) => {
+			var now = moment();
+			return moment(a.StartDate).isBefore(now) && moment(a.EndDate).isAfter(now);
+		}
 		var params = "StartDate=" + encodeURIComponent(StartDate) + "&EndDate=" + encodeURIComponent(EndDate);
 		var get = () => {
 			$http.get('/annotation/query?' + params)
