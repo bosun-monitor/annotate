@@ -19,7 +19,7 @@ class Annotation {
 		this.Url = a.Url || "";
 		this.Source = a.Source || "annotate-ui";
 		this.Host = a.Host || "";
-		this.Owner = a.Owner || "";
+		this.Owner = a.Owner || getOwner() || "";
 		this.Category = a.Category || "";
 	}
 	setTime() {
@@ -110,10 +110,13 @@ annotateControllers.controller('CreateCtrl', ['$scope', '$http', '$routeParams',
 		.success((data) => {
 			$scope.hosts = data;
 		})
-
 	$scope.submit = () => {
-		if ($scope.annotation.Id == "" && $scope.annotation.CreationUser != "") {
+		var idMissing = $scope.annotation.Id == "";
+		if ( idMissing && $scope.annotation.CreationUser != "") {
 			setUser($scope.annotation.CreationUser);
+		}
+		if ( idMissing && $scope.annotation.Owner != "") {
+			setOwner($scope.annotation.Owner);
 		}
 		$http.post('/annotation', $scope.annotation)
 			.success((data) => {
@@ -193,9 +196,18 @@ function readCookie(name) {
 function eraseCookie(name) {
     createCookie(name, "", -1);
 }
+
 function getUser() {
     return readCookie('action-user');
 }
 function setUser(name) {
     createCookie('action-user', name, 1000);
+}
+
+function getOwner() {
+    return readCookie('action-owner');
+}
+function setOwner(name) {
+	console.log("set-cookie owner")
+    createCookie('action-owner', name, 1000);
 }
