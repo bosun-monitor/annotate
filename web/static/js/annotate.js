@@ -112,7 +112,6 @@ annotateControllers.controller('CreateCtrl', ['$scope', '$http', '$routeParams',
 		})
 	$scope.switch = () => {
 		var m = moment.parseZone($scope.annotation.StartDate);
-		console.log(m.zone());
 		if (m.zone() == 0) {
 			$scope.annotation.StartDate = moment($scope.annotation.StartDate).local().format(timeFormat);
 			$scope.annotation.EndDate = moment($scope.annotation.EndDate).local().format(timeFormat);
@@ -141,42 +140,51 @@ annotateControllers.controller('CreateCtrl', ['$scope', '$http', '$routeParams',
 }]);
 
 annotateControllers.controller('ListCtrl', ['$scope', '$http', function($scope, $http) {
-		$scope.EndDate = moment().format(timeFormat);
-		$scope.StartDate = moment().subtract(1, "hours").format(timeFormat);
-		$scope.url = (url) => {
-			url = url.replace(/.*?:\/\//g, "")
-			if (url.length > 20) {
-				url = url.substring(0, 20-3) + "..."
-			}
-			return url;
+	$scope.EndDate = moment().format(timeFormat);
+	$scope.StartDate = moment().subtract(1, "hours").format(timeFormat);
+	$scope.url = (url) => {
+		url = url.replace(/.*?:\/\//g, "")
+		if (url.length > 20) {
+			url = url.substring(0, 20-3) + "..."
 		}
-		$scope.active = (a) => {
-			var now = moment();
-			return moment(a.StartDate).isBefore(now) && moment(a.EndDate).isAfter(now);
+		return url;
+	}
+	$scope.active = (a) => {
+		var now = moment();
+		return moment(a.StartDate).isBefore(now) && moment(a.EndDate).isAfter(now);
+	}
+	$scope.get = () => {
+		var params = "StartDate=" + encodeURIComponent($scope.StartDate) + "&EndDate=" + encodeURIComponent($scope.EndDate);
+		$http.get('/annotation/query?' + params)
+			.success(function(data) {
+				$scope.annotations = data;
+			})
+			.error(function(error) {
+				$scope.status = 'Unable to fetch annotations: ' + error;
+			});
+	}
+	$scope.get();
+	$scope.delete = (id) => {
+		$http.delete('/annotation/' + id)
+			.error((error) => {
+				$scope.status = error;
+			})
+			.success(() => {
+				// Remove deleted item from scope model
+				$scope.annotations = _.without($scope.annotations, _.findWhere($scope.annotations, {"Id": id}));
+			})
+	}
+	$scope.switch = () => {
+		var m = moment.parseZone($scope.StartDate);
+		if (m.zone() == 0) {
+			$scope.StartDate = moment($scope.StartDate).local().format(timeFormat);
+			$scope.EndDate = moment($scope.EndDate).local().format(timeFormat);
+		} else {
+			$scope.StartDate = moment($scope.StartDate).utc().format(timeFormat);
+			$scope.EndDate = moment($scope.EndDate).utc().format(timeFormat);
 		}
-		$scope.get = () => {
-			var params = "StartDate=" + encodeURIComponent($scope.StartDate) + "&EndDate=" + encodeURIComponent($scope.EndDate);
-			$http.get('/annotation/query?' + params)
-				.success(function(data) {
-					$scope.annotations = data;
-				})
-				.error(function(error) {
-					$scope.status = 'Unable to fetch annotations: ' + error;
-				});
-		}
-		$scope.get();
-		$scope.delete = (id) => {
-			$http.delete('/annotation/' + id)
-				.error((error) => {
-					$scope.status = error;
-				})
-				.success(() => {
-					// Remove deleted item from scope model
-					$scope.annotations = _.without($scope.annotations, _.findWhere($scope.annotations, {"Id": id}));
-				})
-		}
+	}
 }]);
-
 
 // From http://www.quirksmode.org/js/cookies.html
 
