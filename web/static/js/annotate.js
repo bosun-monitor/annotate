@@ -110,6 +110,17 @@ annotateControllers.controller('CreateCtrl', ['$scope', '$http', '$routeParams',
 		.success((data) => {
 			$scope.hosts = data;
 		})
+	$scope.switch = () => {
+		var m = moment.parseZone($scope.annotation.StartDate);
+		console.log(m.zone());
+		if (m.zone() == 0) {
+			$scope.annotation.StartDate = moment($scope.annotation.StartDate).local().format(timeFormat);
+			$scope.annotation.EndDate = moment($scope.annotation.EndDate).local().format(timeFormat);
+		} else {
+			$scope.annotation.StartDate = moment($scope.annotation.StartDate).utc().format(timeFormat);
+			$scope.annotation.EndDate = moment($scope.annotation.EndDate).utc().format(timeFormat);
+		}
+	}
 	$scope.submit = () => {
 		var idMissing = $scope.annotation.Id == "";
 		if ( idMissing && $scope.annotation.CreationUser != "") {
