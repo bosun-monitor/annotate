@@ -8,11 +8,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/kylebrandt/annotate"
+	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/gorilla/mux"
 	"github.com/kylebrandt/annotate/backend"
 )
-
 
 // esc -o static.go -pkg web static/index.html static/css static/js
 func Listen(listenAddr string, b []backend.Backend) error {
@@ -104,7 +103,7 @@ func GetAnnotation(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
-func DeleteAnnotation(w http.ResponseWriter, req *http.Request)  {
+func DeleteAnnotation(w http.ResponseWriter, req *http.Request) {
 	id := mux.Vars(req)["id"]
 	if id == "" {
 		serveError(w, fmt.Errorf("id required"))

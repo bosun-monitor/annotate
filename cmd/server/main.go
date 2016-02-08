@@ -4,7 +4,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/BurntSushi/toml"
+	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/BurntSushi/toml"
 	"github.com/kylebrandt/annotate/backend"
 	"github.com/kylebrandt/annotate/web"
 )
@@ -18,7 +18,6 @@ type ElasticCluster struct {
 	Servers []string // i.w. http://ny-elastic01:9200
 	Index   string
 }
-
 
 var confFlag = flag.String("conf", "config.toml", "config file")
 

@@ -4,17 +4,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/twinj/uuid"
+	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/twinj/uuid"
 )
-
-
 
 type RFC3339 struct {
 	time.Time
 }
 
 func (t RFC3339) MarshalJSON() ([]byte, error) {
-    return []byte(`"` + t.Format(time.RFC3339) + `"`), nil
+	return []byte(`"` + t.Format(time.RFC3339) + `"`), nil
 }
 
 type Annotation struct {
