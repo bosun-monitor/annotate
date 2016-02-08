@@ -3,6 +3,20 @@
 		<div class="alert alert-danger" ng-bind="error"></div>
 	</div>
 </div>
+
+<div class="row">
+	<form class="form">
+		<div class="col-sm-3 form-group">
+			<label class="control-label">Start</label>
+			<input type="text" class="form-control" ng-model="StartDate" ng-blur="get()">
+		</div>
+		<div class="col-sm-3 from-group">
+			<label class="control-label">End</label>
+			<input type="text" class="form-control" ng-model="EndDate" ng-blur="get()">
+		</div>
+	</form>
+</div>
+
 <div class="row">
 	<div class="col-sm-12">
 		<table class="table">

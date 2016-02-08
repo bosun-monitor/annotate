@@ -141,8 +141,8 @@ annotateControllers.controller('CreateCtrl', ['$scope', '$http', '$routeParams',
 }]);
 
 annotateControllers.controller('ListCtrl', ['$scope', '$http', function($scope, $http) {
-		var EndDate = moment().format(timeFormat);
-		var StartDate = moment().subtract(1, "hours").format(timeFormat);
+		$scope.EndDate = moment().format(timeFormat);
+		$scope.StartDate = moment().subtract(1, "hours").format(timeFormat);
 		$scope.url = (url) => {
 			url = url.replace(/.*?:\/\//g, "")
 			if (url.length > 20) {
@@ -154,8 +154,8 @@ annotateControllers.controller('ListCtrl', ['$scope', '$http', function($scope, 
 			var now = moment();
 			return moment(a.StartDate).isBefore(now) && moment(a.EndDate).isAfter(now);
 		}
-		var params = "StartDate=" + encodeURIComponent(StartDate) + "&EndDate=" + encodeURIComponent(EndDate);
-		var get = () => {
+		$scope.get = () => {
+			var params = "StartDate=" + encodeURIComponent($scope.StartDate) + "&EndDate=" + encodeURIComponent($scope.EndDate);
 			$http.get('/annotation/query?' + params)
 				.success(function(data) {
 					$scope.annotations = data;
@@ -164,7 +164,7 @@ annotateControllers.controller('ListCtrl', ['$scope', '$http', function($scope, 
 					$scope.status = 'Unable to fetch annotations: ' + error;
 				});
 		}
-		get();
+		$scope.get();
 		$scope.delete = (id) => {
 			$http.delete('/annotation/' + id)
 				.error((error) => {
