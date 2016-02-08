@@ -14,9 +14,9 @@ import (
 )
 
 // esc -o static.go -pkg web static/index.html static/css static/js
-func Listen(listenAddr string, b []backend.Backend) error {
+func Listen(listenAddr string, b []backend.Backend, local bool) error {
 	backends = b
-	webFS := FS(true)
+	webFS := FS(local)
 	index, err := webFS.Open("/static/index.html")
 	if err != nil {
 		return fmt.Errorf("Error opening static file: %v", err)

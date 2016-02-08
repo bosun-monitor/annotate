@@ -20,6 +20,7 @@ type ElasticCluster struct {
 }
 
 var confFlag = flag.String("conf", "config.toml", "config file")
+var localFlag = flag.Bool("dev", false, "use local assets, must be run from annotate/web dir.")
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -41,7 +42,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-	go func() { log.Fatal(web.Listen(c.ListenAddress, backends)) }()
+	go func() { log.Fatal(web.Listen(c.ListenAddress, backends, *localFlag)) }()
 	select {}
 }
 
