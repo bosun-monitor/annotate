@@ -10,6 +10,7 @@ import (
 
 	"github.com/kylebrandt/annotate"
 	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/gorilla/mux"
+	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/twinj/uuid"
 	"github.com/kylebrandt/annotate/backend"
 )
 
@@ -66,7 +67,7 @@ func InsertAnnotation(w http.ResponseWriter, req *http.Request) {
 		serveError(w, err)
 	}
 	if a.Id == "" { //if Id isn't set, this is a new Annotation
-		a.SetGUID()
+		a.Id = uuid.NewV4().String()
 	}
 	for _, b := range backends {
 		err := b.InsertAnnotation(&a)

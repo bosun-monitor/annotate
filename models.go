@@ -3,8 +3,6 @@ package annotate
 import (
 	"fmt"
 	"time"
-
-	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/twinj/uuid"
 )
 
 type RFC3339 struct {
@@ -40,14 +38,6 @@ const (
 )
 
 type Annotations []Annotation
-
-func (a *Annotation) SetGUID() error {
-	if a.Id != "" {
-		return fmt.Errorf("GUID already set: %v", a.Id)
-	}
-	a.Id = uuid.NewV4().String()
-	return nil
-}
 
 func (a *Annotation) SetNow() {
 	a.StartDate.Time = time.Now()
