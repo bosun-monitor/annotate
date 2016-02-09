@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/kylebrandt/annotate"
-	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/gorilla/mux"
 
+	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/gorilla/mux"
 	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/twinj/uuid"
 	"github.com/kylebrandt/annotate/backend"
 )
@@ -19,7 +19,6 @@ import (
 func AddRoutes(router *mux.Router, prefix string, b []backend.Backend, enableUI, local bool) error {
 	backends = b
 	router.HandleFunc(prefix+"/annotation", InsertAnnotation).Methods("POST")
-	router.HandleFunc(prefix+"/annotation/query", Cors).Methods("OPTIONS")
 	router.HandleFunc(prefix+"/annotation/query", GetAnnotations).Methods("GET")
 	router.HandleFunc(prefix+"/annotation/{id}", GetAnnotation).Methods("GET")
 	router.HandleFunc(prefix+"/annotation/{id}", DeleteAnnotation).Methods("DELETE")
@@ -88,6 +87,13 @@ func InsertAnnotation(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
+
+func Cors(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "X-Miniprofiler, X-MiniProfiler-Ids")
+	w.Header().Set("Access-Control-Expose-Headers", "X-MiniProfiler-Ids")
+}
+
 func GetAnnotation(w http.ResponseWriter, req *http.Request) {
 	var a *annotate.Annotation
 	var err error
@@ -104,6 +110,7 @@ func GetAnnotation(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		serveError(w, err)
 	}
+
 	return
 }
 
@@ -147,7 +154,9 @@ func GetAnnotations(w http.ResponseWriter, req *http.Request) {
 	var endT *time.Time
 	var err error
 	w.Header().Set("Content-Type", "application/json")
-
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "X-Miniprofiler, X-MiniProfiler-Ids")
+	w.Header().Set("Access-Control-Expose-Headers", "X-MiniProfiler-Ids")
 	// Time
 	start := req.URL.Query().Get(annotate.StartDate)
 	end := req.URL.Query().Get(annotate.EndDate)
