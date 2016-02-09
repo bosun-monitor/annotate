@@ -10,13 +10,23 @@ import (
 
 	"github.com/kylebrandt/annotate"
 	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/gorilla/mux"
+
 	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/twinj/uuid"
 	"github.com/kylebrandt/annotate/backend"
 )
 
-// esc -o static.go -pkg web static/index.html static/css static/js
-func Listen(listenAddr string, b []backend.Backend, local bool) error {
+// esc -o static.go -pkg web static
+func AddRoutes(router *mux.Router, prefix string, b []backend.Backend, enableUI, local bool) error {
 	backends = b
+	router.HandleFunc(prefix+"/annotation", InsertAnnotation).Methods("POST")
+	router.HandleFunc(prefix+"/annotation/query", Cors).Methods("OPTIONS")
+	router.HandleFunc(prefix+"/annotation/query", GetAnnotations).Methods("GET")
+	router.HandleFunc(prefix+"/annotation/{id}", GetAnnotation).Methods("GET")
+	router.HandleFunc(prefix+"/annotation/{id}", DeleteAnnotation).Methods("DELETE")
+	router.HandleFunc(prefix+"/annotation/values/{field}", GetFieldValues).Methods("GET")
+	if !enableUI {
+		return nil
+	}
 	webFS := FS(local)
 	index, err := webFS.Open("/static/index.html")
 	if err != nil {
@@ -26,15 +36,9 @@ func Listen(listenAddr string, b []backend.Backend, local bool) error {
 	if err != nil {
 		return err
 	}
-	router.HandleFunc("/annotation", InsertAnnotation).Methods("POST")
-	router.HandleFunc("/annotation/query", GetAnnotations).Methods("GET")
-	router.HandleFunc("/annotation/{id}", GetAnnotation).Methods("GET")
-	router.HandleFunc("/annotation/{id}", DeleteAnnotation).Methods("DELETE")
-	router.HandleFunc("/annotation/values/{field}", GetFieldValues).Methods("GET")
 	router.PathPrefix("/static/").Handler(http.FileServer(webFS))
 	router.PathPrefix("/").HandlerFunc(Index).Methods("GET")
-	http.Handle("/", router)
-	return http.ListenAndServe(listenAddr, nil)
+	return nil
 }
 
 func Index(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +47,6 @@ func Index(w http.ResponseWriter, r *http.Request) {
 
 //Web Section
 var (
-	router    = mux.NewRouter()
 	indexHTML []byte
 	backends  = []backend.Backend{}
 )

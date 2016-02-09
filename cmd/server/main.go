@@ -3,8 +3,10 @@ package main
 import (
 	"flag"
 	"log"
+	"net/http"
 
 	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/BurntSushi/toml"
+	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/gorilla/mux"
 	"github.com/kylebrandt/annotate/backend"
 	"github.com/kylebrandt/annotate/web"
 )
@@ -42,7 +44,14 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-	go func() { log.Fatal(web.Listen(c.ListenAddress, backends, *localFlag)) }()
+	router := mux.Router{}
+	if err := web.AddRoutes(&router, "", backends, true, *localFlag); err != nil {
+		log.Fatal(err)
+	}
+	http.Handle("/", &router)
+	go func() {
+		log.Fatal(http.ListenAndServe(c.ListenAddress, nil))
+	}()
 	select {}
 }
 
