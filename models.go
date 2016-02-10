@@ -13,6 +13,18 @@ func (t RFC3339) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + t.Format(time.RFC3339) + `"`), nil
 }
 
+func (t *RFC3339) UnmarshalJSON(b []byte) (err error) {
+    if b[0] == '"' && b[len(b)-1] == '"' {
+        b = b[1 : len(b)-1]
+    }
+    if len(b) == 0 {
+        t.Time = time.Time{}
+        return
+    }
+    t.Time, err = time.Parse(time.RFC3339, string(b))
+    return
+}
+
 type Annotation struct {
 	Id           string
 	Message      string
