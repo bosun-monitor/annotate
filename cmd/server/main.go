@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/BurntSushi/toml"
-	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/gorilla/mux"
+	"github.com/BurntSushi/toml"
+	"github.com/gorilla/mux"
 	"github.com/kylebrandt/annotate/backend"
 	"github.com/kylebrandt/annotate/web"
 )

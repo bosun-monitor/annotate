@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/kylebrandt/annotate"
-	elastic "github.com/kylebrandt/annotate/Godeps/_workspace/src/gopkg.in/olivere/elastic.v3"
+	elastic "gopkg.in/olivere/elastic.v3"
 )
 
 type Backend interface {

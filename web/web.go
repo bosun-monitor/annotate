@@ -10,8 +10,8 @@ import (
 
 	"github.com/kylebrandt/annotate"
 
-	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/gorilla/mux"
-	"github.com/kylebrandt/annotate/Godeps/_workspace/src/github.com/twinj/uuid"
+	"github.com/gorilla/mux"
+	"github.com/twinj/uuid"
 	"github.com/kylebrandt/annotate/backend"
 )
 
