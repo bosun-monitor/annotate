@@ -11,16 +11,17 @@ import (
 	"github.com/kylebrandt/annotate"
 
 	"github.com/gorilla/mux"
-	"github.com/twinj/uuid"
 	"github.com/kylebrandt/annotate/backend"
+	"github.com/twinj/uuid"
 )
 
 // esc -o static.go -pkg web static
 func AddRoutes(router *mux.Router, prefix string, b []backend.Backend, enableUI, local bool) error {
 	backends = b
-	router.HandleFunc(prefix+"/annotation", InsertAnnotation).Methods("POST")
+	router.HandleFunc(prefix+"/annotation", InsertAnnotation).Methods("POST").Methods("PUT")
 	router.HandleFunc(prefix+"/annotation/query", GetAnnotations).Methods("GET")
 	router.HandleFunc(prefix+"/annotation/{id}", GetAnnotation).Methods("GET")
+	router.HandleFunc(prefix+"/annotation/{id}", InsertAnnotation).Methods("PUT")
 	router.HandleFunc(prefix+"/annotation/{id}", DeleteAnnotation).Methods("DELETE")
 	router.HandleFunc(prefix+"/annotation/values/{field}", GetFieldValues).Methods("GET")
 	if !enableUI {
@@ -52,11 +53,18 @@ var (
 
 func InsertAnnotation(w http.ResponseWriter, req *http.Request) {
 	var a annotate.Annotation
+	id := mux.Vars(req)["id"]
 	d := json.NewDecoder(req.Body)
 	err := d.Decode(&a)
 	if err != nil {
 		serveError(w, err)
 		return
+	}
+	if a.Id != "" && id != "" && a.Id != id {
+		serveError(w, fmt.Errorf("conflicting ids in request: url id %v, body id %v", id, a.Id))
+	}
+	if id != "" { // If we got the id in the url
+		a.Id = id
 	}
 	if a.IsOneTimeSet() {
 		a.MatchTimes()
@@ -70,6 +78,14 @@ func InsertAnnotation(w http.ResponseWriter, req *http.Request) {
 	}
 	if a.Id == "" { //if Id isn't set, this is a new Annotation
 		a.Id = uuid.NewV4().String()
+	} else { // Make sure annotation exists if not new
+		for _, b := range backends {
+			//TODO handle multiple backends
+			_, err := b.GetAnnotation(a.Id)
+			if err != nil {
+				serveError(w, fmt.Errorf("could not find annotation with id %v to update: %v", a.Id, err))
+			}
+		}
 	}
 	for _, b := range backends {
 		err := b.InsertAnnotation(&a)
@@ -85,13 +101,6 @@ func InsertAnnotation(w http.ResponseWriter, req *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return
-}
-
-
-func Cors(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "X-Miniprofiler, X-MiniProfiler-Ids")
-	w.Header().Set("Access-Control-Expose-Headers", "X-MiniProfiler-Ids")
 }
 
 func GetAnnotation(w http.ResponseWriter, req *http.Request) {
@@ -154,9 +163,6 @@ func GetAnnotations(w http.ResponseWriter, req *http.Request) {
 	var endT *time.Time
 	var err error
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "X-Miniprofiler, X-MiniProfiler-Ids")
-	w.Header().Set("Access-Control-Expose-Headers", "X-MiniProfiler-Ids")
 	// Time
 	start := req.URL.Query().Get(annotate.StartDate)
 	end := req.URL.Query().Get(annotate.EndDate)
