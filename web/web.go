@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"time"
 
@@ -94,7 +93,6 @@ func InsertAnnotation(w http.ResponseWriter, req *http.Request) {
 			serveError(w, err)
 		}
 	}
-	log.Println(a)
 	err = json.NewEncoder(w).Encode(a)
 	if err != nil {
 		serveError(w, err)
