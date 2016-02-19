@@ -44,7 +44,7 @@ func (e *Elastic) GetAnnotation(id string) (*annotate.Annotation, error) {
 	}
 	res, err := e.Get().Index(e.index).Type(docType).Id(id).Do()
 	if err != nil {
-		return &a, fmt.Errorf("%v: %v", err, res.Error.Reason)
+		return &a, err
 	}
 	if err := json.Unmarshal(*res.Source, &a); err != nil {
 		return &a, err
