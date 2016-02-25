@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -110,7 +109,6 @@ func InsertAnnotation(w http.ResponseWriter, req *http.Request) {
 	}
 	format(&a, w, epochFmt)
 	w.Header().Set("Content-Type", "application/json")
-	log.Println(a)
 	return
 }
 
