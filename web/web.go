@@ -1,9 +1,12 @@
 package web
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 
@@ -52,12 +55,21 @@ var (
 
 func InsertAnnotation(w http.ResponseWriter, req *http.Request) {
 	var a annotate.Annotation
+	var ea annotate.EpochAnnotation
+	epochFmt := false
 	id := mux.Vars(req)["id"]
-	d := json.NewDecoder(req.Body)
-	err := d.Decode(&a)
-	if err != nil {
-		serveError(w, err)
-		return
+	b := bytes.NewBuffer(make([]byte, 0))
+	tee := io.TeeReader(req.Body, b)
+	d := json.NewDecoder(tee)
+	errRegFmt := d.Decode(&a)
+	if errRegFmt != nil {
+		d := json.NewDecoder(b)
+		errEpochFmt := d.Decode(&ea)
+		if errEpochFmt != nil {
+			serveError(w, fmt.Errorf("Could not unmarhsal json in RFC3339 fmt or Epoch fmt: %v, %v", errRegFmt, errEpochFmt))
+		}
+		a = ea.AsAnnotation()
+		epochFmt = true
 	}
 	if a.Id != "" && id != "" && a.Id != id {
 		serveError(w, fmt.Errorf("conflicting ids in request: url id %v, body id %v", id, a.Id))
@@ -71,7 +83,7 @@ func InsertAnnotation(w http.ResponseWriter, req *http.Request) {
 	if a.IsTimeNotSet() {
 		a.SetNow()
 	}
-	err = a.ValidateTime()
+	err := a.ValidateTime()
 	if err != nil {
 		serveError(w, err)
 	}
@@ -93,11 +105,27 @@ func InsertAnnotation(w http.ResponseWriter, req *http.Request) {
 			serveError(w, err)
 		}
 	}
-	err = json.NewEncoder(w).Encode(a)
-	if err != nil {
-		serveError(w, err)
-	}
+	format(&a, w, epochFmt)
 	w.Header().Set("Content-Type", "application/json")
+	log.Println(a)
+	return
+}
+
+func format(a *annotate.Annotation, w http.ResponseWriter, epochFmt bool) (e error) {
+	if epochFmt {
+		e = json.NewEncoder(w).Encode(a.AsEpochAnnotation())
+	} else {
+		e = json.NewEncoder(w).Encode(a)
+	}
+	return
+}
+
+func formatPlural(a annotate.Annotations, w http.ResponseWriter, epochFmt bool) (e error) {
+	if epochFmt {
+		e = json.NewEncoder(w).Encode(a.AsEpochAnnotations())
+	} else {
+		e = json.NewEncoder(w).Encode(a)
+	}
 	return
 }
 
@@ -113,11 +141,10 @@ func GetAnnotation(w http.ResponseWriter, req *http.Request) {
 			serveError(w, err)
 		}
 	}
-	err = json.NewEncoder(w).Encode(a)
+	err = format(a, w, mux.Vars(req)["epoch"] == "1")
 	if err != nil {
 		serveError(w, err)
 	}
-
 	return
 }
 
@@ -164,6 +191,7 @@ func GetAnnotations(w http.ResponseWriter, req *http.Request) {
 	// Time
 	start := req.URL.Query().Get(annotate.StartDate)
 	end := req.URL.Query().Get(annotate.EndDate)
+	// TODO Accept epoch here as well
 	if start != "" {
 		s, err := time.Parse(time.RFC3339, start)
 		if err != nil {
@@ -196,8 +224,7 @@ func GetAnnotations(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Encode
-	err = json.NewEncoder(w).Encode(a)
-	if err != nil {
+	if err := formatPlural(a, w, mux.Vars(req)["epoch"] == "1"); err != nil {
 		serveError(w, err)
 	}
 	return
