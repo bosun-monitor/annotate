@@ -150,13 +150,13 @@ func GetAnnotation(w http.ResponseWriter, req *http.Request) {
 		//TODO Collect errors and insert into the backends that we can
 		if err != nil {
 			serveError(w, err)
-            return
+			return
 		}
 	}
 	err = format(a, w, req.URL.Query().Get("Epoch") == "1")
 	if err != nil {
 		serveError(w, err)
-        return
+		return
 	}
 	return
 }
@@ -171,7 +171,7 @@ func DeleteAnnotation(w http.ResponseWriter, req *http.Request) {
 		//TODO Make sure it is deleted from at least one backend?
 		if err != nil {
 			serveError(w, err)
-            return
+			return
 		}
 	}
 }
@@ -187,13 +187,13 @@ func GetFieldValues(w http.ResponseWriter, req *http.Request) {
 		//TODO Unique Results from all backends
 		if err != nil {
 			serveError(w, err)
-            return
+			return
 		}
 	}
 	err = json.NewEncoder(w).Encode(values)
 	if err != nil {
 		serveError(w, err)
-        return
+		return
 	}
 	return
 }
@@ -213,7 +213,7 @@ func GetAnnotations(w http.ResponseWriter, req *http.Request) {
 			epoch, epochErr := strconv.ParseInt(start, 10, 64)
 			if epochErr != nil {
 				serveError(w, fmt.Errorf("couldn't parse StartDate as RFC3339 or epoch: %v, %v", rfcErr, epochErr))
-                return
+				return
 			}
 			s = time.Unix(epoch, 0)
 		}
@@ -225,7 +225,7 @@ func GetAnnotations(w http.ResponseWriter, req *http.Request) {
 			epoch, epochErr := strconv.ParseInt(start, 10, 64)
 			if epochErr != nil {
 				serveError(w, fmt.Errorf("couldn't parse EndDate as RFC3339 or epoch: %v, %v", rfcErr, epochErr))
-                return
+				return
 			}
 			s = time.Unix(epoch, 0)
 		}
@@ -250,14 +250,14 @@ func GetAnnotations(w http.ResponseWriter, req *http.Request) {
 		//TODO Collect errors and insert into the backends that we can
 		if err != nil {
 			serveError(w, err)
-            return
+			return
 		}
 	}
 
 	// Encode
 	if err := formatPlural(a, w, req.URL.Query().Get("Epoch") == "1"); err != nil {
 		serveError(w, err)
-        return
+		return
 	}
 	return
 }
