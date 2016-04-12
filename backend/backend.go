@@ -63,28 +63,28 @@ func (e *Elastic) DeleteAnnotation(id string) error {
 
 func (e *Elastic) GetAnnotations(start, end *time.Time, source, host, creationUser, owner, category string) (annotate.Annotations, error) {
 	annotations := annotate.Annotations{}
-	s := elastic.NewSearchSource()
+	filters := []elastic.Query{}
 	if start != nil && end != nil {
 		startQ := elastic.NewRangeQuery(annotate.EndDate).Gte(start)
 		endQ := elastic.NewRangeQuery(annotate.StartDate).Lte(end)
-		s = s.Query(elastic.NewBoolQuery().Must(startQ, endQ))
+		filters = append(filters, elastic.NewBoolQuery().Must(startQ, endQ))
 	}
 	if source != "" {
-		s = s.Query(elastic.NewTermQuery(annotate.Source, source))
+		filters = append(filters, elastic.NewTermQuery(annotate.Source, source))
 	}
 	if host != "" {
-		s = s.Query(elastic.NewTermQuery(annotate.Host, host))
+		filters = append(filters, elastic.NewTermQuery(annotate.Host, host))
 	}
 	if creationUser != "" {
-		s = s.Query(elastic.NewTermQuery(annotate.CreationUser, creationUser))
+		filters = append(filters, elastic.NewTermQuery(annotate.CreationUser, creationUser))
 	}
 	if owner != "" {
-		s = s.Query(elastic.NewTermQuery(annotate.Owner, owner))
+		filters = append(filters, elastic.NewTermQuery(annotate.Owner, owner))
 	}
 	if category != "" {
-		s = s.Query(elastic.NewTermQuery(annotate.Category, category))
+		filters = append(filters, elastic.NewTermQuery(annotate.Category, category))
 	}
-	res, err := e.Search(e.index).Query(s).Size(e.maxResults).Do()
+	res, err := e.Search(e.index).Query(elastic.NewBoolQuery().Must(filters...)).Size(e.maxResults).Do()
 	if err != nil {
 		return annotations, err
 	}
