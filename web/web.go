@@ -203,6 +203,21 @@ func GetAnnotations(w http.ResponseWriter, req *http.Request) {
 	var startT time.Time
 	var endT time.Time
 	var err error
+	for param, _ := range req.URL.Query() {
+		switch param {
+		case annotate.StartDate:
+		case annotate.EndDate:
+		case annotate.Source:
+		case annotate.Host:
+		case annotate.CreationUser:
+		case annotate.Owner:
+		case annotate.Category:
+		case annotate.Message:
+		default:
+			serveError(w, fmt.Errorf("%v is not a valid query field", param))
+			return
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	// Time
 	start := req.URL.Query().Get(annotate.StartDate)
@@ -243,10 +258,11 @@ func GetAnnotations(w http.ResponseWriter, req *http.Request) {
 	creationUser := req.URL.Query().Get(annotate.CreationUser)
 	owner := req.URL.Query().Get(annotate.Owner)
 	category := req.URL.Query().Get(annotate.Category)
+	message := req.URL.Query().Get(annotate.Message)
 
 	// Execute
 	for _, b := range backends {
-		a, err = b.GetAnnotations(&startT, &endT, source, host, creationUser, owner, category)
+		a, err = b.GetAnnotations(&startT, &endT, source, host, creationUser, owner, category, message)
 		//TODO Collect errors and insert into the backends that we can
 		if err != nil {
 			serveError(w, err)

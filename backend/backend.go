@@ -13,7 +13,7 @@ import (
 type Backend interface {
 	InsertAnnotation(a *annotate.Annotation) error
 	GetAnnotation(id string) (*annotate.Annotation, error)
-	GetAnnotations(start, end *time.Time, source, host, creationUser, owner, category string) (annotate.Annotations, error)
+	GetAnnotations(start, end *time.Time, source, host, creationUser, owner, category, message string) (annotate.Annotations, error)
 	DeleteAnnotation(id string) error
 	GetFieldValues(field string) ([]string, error)
 	InitBackend() error
@@ -61,7 +61,7 @@ func (e *Elastic) DeleteAnnotation(id string) error {
 	//TODO? Check res.Found?
 }
 
-func (e *Elastic) GetAnnotations(start, end *time.Time, source, host, creationUser, owner, category string) (annotate.Annotations, error) {
+func (e *Elastic) GetAnnotations(start, end *time.Time, source, host, creationUser, owner, category, message string) (annotate.Annotations, error) {
 	annotations := annotate.Annotations{}
 	filters := []elastic.Query{}
 	if start != nil && end != nil {
@@ -83,6 +83,9 @@ func (e *Elastic) GetAnnotations(start, end *time.Time, source, host, creationUs
 	}
 	if category != "" {
 		filters = append(filters, elastic.NewTermQuery(annotate.Category, category))
+	}
+	if message != "" {
+		filters = append(filters, elastic.NewTermQuery(annotate.Message, message))
 	}
 	res, err := e.Search(e.index).Query(elastic.NewBoolQuery().Must(filters...)).Size(e.maxResults).Do()
 	if err != nil {
