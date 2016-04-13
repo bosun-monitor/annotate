@@ -7,8 +7,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/gorilla/mux"
-	"github.com/kylebrandt/annotate/backend"
-	"github.com/kylebrandt/annotate/web"
+	"github.com/bosun-monitor/annotate/backend"
+	"github.com/bosun-monitor/annotate/web"
 )
 
 type Conf struct {
