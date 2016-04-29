@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kylebrandt/annotate"
+	"github.com/bosun-monitor/annotate"
 )
 
 var rootURLFlag = flag.String("h", "http://bosun/api", "URL of the root of the API")
@@ -80,7 +80,7 @@ func main() {
 	if !setHostname {
 		var err error
 		host, err = os.Hostname()
-        host = strings.ToLower(host)
+		host = strings.ToLower(host)
 		if err == nil {
 			host = strings.SplitN(host, ".", 2)[0]
 		} else {
@@ -104,7 +104,8 @@ func procIn() (a annotate.Annotation) {
 }
 
 func sendAnnotation(a annotate.Annotation) {
-	returned, err := annotate.SendAnnotation(*rootURLFlag, a)
+	c := annotate.NewClient(*rootURLFlag)
+	returned, err := c.SendAnnotation(a)
 	if err != nil {
 		log.Fatal(err)
 	}
