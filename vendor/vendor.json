@@ -24,8 +24,8 @@
 		},
 		{
 			"path": "gopkg.in/olivere/elastic.v3",
-			"revision": "13355e19a360316f040c7f43cec0ed29f133d146",
-			"revisionTime": "2016-02-03T17:48:28+01:00"
+			"revision": "eaecbad7a83e6b60f131825553e5eb7fd5a50b41",
+			"revisionTime": "2016-10-01T14:34:41+02:00"
 		},
 		{
 			"path": "gopkg.in/olivere/elastic.v3/backoff",

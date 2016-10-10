@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"net/http/httputil"
@@ -18,11 +17,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/net/context"
+	"golang.org/x/net/context/ctxhttp"
 )
 
 const (
 	// Version is the current version of Elastic.
-	Version = "3.0.20"
+	Version = "3.0.55"
 
 	// DefaultUrl is the default endpoint of Elasticsearch on the local machine.
 	// It is used e.g. when initializing a new Client without a specific URL.
@@ -112,9 +114,9 @@ type Client struct {
 	mu                        sync.RWMutex  // guards the next block
 	urls                      []string      // set of URLs passed initially to the client
 	running                   bool          // true if the client's background processes are running
-	errorlog                  *log.Logger   // error log for critical messages
-	infolog                   *log.Logger   // information log for e.g. response times
-	tracelog                  *log.Logger   // trace log for debugging
+	errorlog                  Logger        // error log for critical messages
+	infolog                   Logger        // information log for e.g. response times
+	tracelog                  Logger        // trace log for debugging
 	maxRetries                int           // max. number of retries
 	scheme                    string        // http or https
 	healthcheckEnabled        bool          // healthchecks enabled or disabled
@@ -277,12 +279,12 @@ func NewClient(options ...ClientOptionFunc) (*Client, error) {
 //
 // While NewClient by default sets up e.g. periodic health checks
 // and sniffing for new nodes in separate goroutines, NewSimpleClient does
-// not and it meant as a simple replacement where you don't need all the
+// not and is meant as a simple replacement where you don't need all the
 // heavy lifting of NewClient.
 //
 // NewSimpleClient does the following by default: First, all health checks
 // are disabled, including timeouts and periodic checks. Second, sniffing
-// is disable, including timeouts and periodic checks. The number of retries
+// is disabled, including timeouts and periodic checks. The number of retries
 // is set to 1. NewSimpleClient also does not start any goroutines.
 //
 // Notice that you can still override settings by passing additional options,
@@ -522,7 +524,7 @@ func SetRequiredPlugins(plugins ...string) ClientOptionFunc {
 
 // SetErrorLog sets the logger for critical messages like nodes joining
 // or leaving the cluster or failing requests. It is nil by default.
-func SetErrorLog(logger *log.Logger) ClientOptionFunc {
+func SetErrorLog(logger Logger) ClientOptionFunc {
 	return func(c *Client) error {
 		c.errorlog = logger
 		return nil
@@ -531,7 +533,7 @@ func SetErrorLog(logger *log.Logger) ClientOptionFunc {
 
 // SetInfoLog sets the logger for informational messages, e.g. requests
 // and their response times. It is nil by default.
-func SetInfoLog(logger *log.Logger) ClientOptionFunc {
+func SetInfoLog(logger Logger) ClientOptionFunc {
 	return func(c *Client) error {
 		c.infolog = logger
 		return nil
@@ -540,7 +542,7 @@ func SetInfoLog(logger *log.Logger) ClientOptionFunc {
 
 // SetTraceLog specifies the log.Logger to use for output of HTTP requests
 // and responses which is helpful during debugging. It is nil by default.
-func SetTraceLog(logger *log.Logger) ClientOptionFunc {
+func SetTraceLog(logger Logger) ClientOptionFunc {
 	return func(c *Client) error {
 		c.tracelog = logger
 		return nil
@@ -680,18 +682,21 @@ func (c *Client) dumpResponse(resp *http.Response) {
 
 // sniffer periodically runs sniff.
 func (c *Client) sniffer() {
-	for {
-		c.mu.RLock()
-		timeout := c.snifferTimeout
-		ticker := time.After(c.snifferInterval)
-		c.mu.RUnlock()
+	c.mu.RLock()
+	timeout := c.snifferTimeout
+	interval := c.snifferInterval
+	c.mu.RUnlock()
 
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
 		select {
 		case <-c.snifferStop:
 			// we are asked to stop, so we signal back that we're stopping now
 			c.snifferStop <- true
 			return
-		case <-ticker:
+		case <-ticker.C:
 			c.sniff(timeout)
 		}
 	}
@@ -711,7 +716,7 @@ func (c *Client) sniff(timeout time.Duration) error {
 
 	// Use all available URLs provided to sniff the cluster.
 	urlsMap := make(map[string]bool)
-	urls := make([]string, 0)
+	var urls []string
 
 	// Add all URLs provided on startup
 	for _, url := range c.urls {
@@ -757,16 +762,12 @@ func (c *Client) sniff(timeout time.Duration) error {
 	}
 }
 
-// reSniffHostAndPort is used to extract hostname and port from a result
-// from a Nodes Info API (example: "inet[/127.0.0.1:9200]").
-var reSniffHostAndPort = regexp.MustCompile(`\/([^:]*):([0-9]+)\]`)
-
 // sniffNode sniffs a single node. This method is run as a goroutine
 // in sniff. If successful, it returns the list of node URLs extracted
 // from the result of calling Nodes Info API. Otherwise, an empty array
 // is returned.
 func (c *Client) sniffNode(url string) []*conn {
-	nodes := make([]*conn, 0)
+	var nodes []*conn
 
 	// Call the Nodes Info API at /_nodes/http
 	req, err := NewRequest("GET", url+"/_nodes/http")
@@ -798,27 +799,15 @@ func (c *Client) sniffNode(url string) []*conn {
 			switch c.scheme {
 			case "https":
 				for nodeID, node := range info.Nodes {
-					if strings.HasPrefix(node.HTTPSAddress, "inet") {
-						m := reSniffHostAndPort.FindStringSubmatch(node.HTTPSAddress)
-						if len(m) == 3 {
-							url := fmt.Sprintf("https://%s:%s", m[1], m[2])
-							nodes = append(nodes, newConn(nodeID, url))
-						}
-					} else {
-						url := fmt.Sprintf("https://%s", node.HTTPSAddress)
+					url := c.extractHostname("https", node.HTTPSAddress)
+					if url != "" {
 						nodes = append(nodes, newConn(nodeID, url))
 					}
 				}
 			default:
 				for nodeID, node := range info.Nodes {
-					if strings.HasPrefix(node.HTTPAddress, "inet") {
-						m := reSniffHostAndPort.FindStringSubmatch(node.HTTPAddress)
-						if len(m) == 3 {
-							url := fmt.Sprintf("http://%s:%s", m[1], m[2])
-							nodes = append(nodes, newConn(nodeID, url))
-						}
-					} else {
-						url := fmt.Sprintf("http://%s", node.HTTPAddress)
+					url := c.extractHostname("http", node.HTTPAddress)
+					if url != "" {
 						nodes = append(nodes, newConn(nodeID, url))
 					}
 				}
@@ -828,12 +817,33 @@ func (c *Client) sniffNode(url string) []*conn {
 	return nodes
 }
 
+// reSniffHostAndPort is used to extract hostname and port from a result
+// from a Nodes Info API (example: "inet[/127.0.0.1:9200]").
+var reSniffHostAndPort = regexp.MustCompile(`\/([^:]*):([0-9]+)\]`)
+
+func (c *Client) extractHostname(scheme, address string) string {
+	if strings.HasPrefix(address, "inet") {
+		m := reSniffHostAndPort.FindStringSubmatch(address)
+		if len(m) == 3 {
+			return fmt.Sprintf("%s://%s:%s", scheme, m[1], m[2])
+		}
+	}
+	s := address
+	if idx := strings.Index(s, "/"); idx >= 0 {
+		s = s[idx+1:]
+	}
+	if strings.Index(s, ":") < 0 {
+		return ""
+	}
+	return fmt.Sprintf("%s://%s", scheme, s)
+}
+
 // updateConns updates the clients' connections with new information
 // gather by a sniff operation.
 func (c *Client) updateConns(conns []*conn) {
 	c.connsMu.Lock()
 
-	newConns := make([]*conn, 0)
+	var newConns []*conn
 
 	// Build up new connections:
 	// If we find an existing connection, use that (including no. of failures etc.).
@@ -850,7 +860,7 @@ func (c *Client) updateConns(conns []*conn) {
 		}
 		if !found {
 			// New connection didn't exist, so add it to our list of new conns.
-			c.errorf("elastic: %s joined the cluster", conn.URL())
+			c.infof("elastic: %s joined the cluster", conn.URL())
 			newConns = append(newConns, conn)
 		}
 	}
@@ -862,18 +872,21 @@ func (c *Client) updateConns(conns []*conn) {
 
 // healthchecker periodically runs healthcheck.
 func (c *Client) healthchecker() {
-	for {
-		c.mu.RLock()
-		timeout := c.healthcheckTimeout
-		ticker := time.After(c.healthcheckInterval)
-		c.mu.RUnlock()
+	c.mu.RLock()
+	timeout := c.healthcheckTimeout
+	interval := c.healthcheckInterval
+	c.mu.RUnlock()
 
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
 		select {
 		case <-c.healthcheckStop:
 			// we are asked to stop, so we signal back that we're stopping now
 			c.healthcheckStop <- true
 			return
-		case <-ticker:
+		case <-ticker.C:
 			c.healthcheck(timeout, false)
 		}
 	}
@@ -943,7 +956,11 @@ func (c *Client) startupHealthcheck(timeout time.Duration) error {
 	// If we don't get a connection after "timeout", we bail.
 	start := time.Now()
 	for {
-		cl := &http.Client{Timeout: timeout}
+		// Make a copy of the HTTP client provided via options to respect
+		// settings like Basic Auth or a user-specified http.Transport.
+		cl := new(http.Client)
+		*cl = *c.c
+		cl.Timeout = timeout
 		for _, url := range urls {
 			req, err := http.NewRequest("HEAD", url, nil)
 			if err != nil {
@@ -975,11 +992,11 @@ func (c *Client) next() (*conn, error) {
 	i := 0
 	numConns := len(c.conns)
 	for {
-		i += 1
+		i++
 		if i > numConns {
 			break // we visited all conns: they all seem to be dead
 		}
-		c.cindex += 1
+		c.cindex++
 		if c.cindex >= numConns {
 			c.cindex = 0
 		}
@@ -1025,6 +1042,19 @@ func (c *Client) mustActiveConn() error {
 // This is necessary for services that expect e.g. HTTP status 404 as a
 // valid outcome (Exists, IndicesExists, IndicesTypeExists).
 func (c *Client) PerformRequest(method, path string, params url.Values, body interface{}, ignoreErrors ...int) (*Response, error) {
+	return c.PerformRequestC(nil, method, path, params, body, ignoreErrors...)
+}
+
+// PerformRequestC does a HTTP request to Elasticsearch.
+// It returns a response and an error on failure.
+//
+// Optionally, a list of HTTP error codes to ignore can be passed.
+// This is necessary for services that expect e.g. HTTP status 404 as a
+// valid outcome (Exists, IndicesExists, IndicesTypeExists).
+//
+// If ctx is not nil, it uses the ctxhttp to do the request,
+// enabling both request cancelation as well as timeout.
+func (c *Client) PerformRequestC(ctx context.Context, method, path string, params url.Values, body interface{}, ignoreErrors ...int) (*Response, error) {
 	start := time.Now().UTC()
 
 	c.mu.RLock()
@@ -1065,7 +1095,7 @@ func (c *Client) PerformRequest(method, path string, params url.Values, body int
 				// Force a healtcheck as all connections seem to be dead.
 				c.healthcheck(timeout, false)
 			}
-			retries -= 1
+			retries--
 			if retries <= 0 {
 				return nil, err
 			}
@@ -1102,9 +1132,14 @@ func (c *Client) PerformRequest(method, path string, params url.Values, body int
 		c.dumpRequest((*http.Request)(req))
 
 		// Get response
-		res, err := c.c.Do((*http.Request)(req))
+		var res *http.Response
+		if ctx == nil {
+			res, err = c.c.Do((*http.Request)(req))
+		} else {
+			res, err = ctxhttp.Do(ctx, c.c, (*http.Request)(req))
+		}
 		if err != nil {
-			retries -= 1
+			retries--
 			if retries <= 0 {
 				c.errorf("elastic: %s is dead", conn.URL())
 				conn.MarkAsDead()
@@ -1186,6 +1221,11 @@ func (c *Client) Update() *UpdateService {
 	return NewUpdateService(c)
 }
 
+// UpdateByQuery performs an update on a set of documents.
+func (c *Client) UpdateByQuery(indices ...string) *UpdateByQueryService {
+	return NewUpdateByQueryService(c).Index(indices...)
+}
+
 // Bulk is the entry point to mass insert/update/delete documents.
 func (c *Client) Bulk() *BulkService {
 	return NewBulkService(c)
@@ -1196,8 +1236,44 @@ func (c *Client) BulkProcessor() *BulkProcessorService {
 	return NewBulkProcessorService(c)
 }
 
-// TODO Term Vectors
-// TODO Multi termvectors API
+// Reindex returns a service that will reindex documents from a source
+// index into a target index.
+//
+// Notice that this Reindexer is an Elastic-specific solution that pre-dated
+// the Reindex API introduced in Elasticsearch 2.3.0 (see ReindexTask).
+//
+// See http://www.elastic.co/guide/en/elasticsearch/guide/current/reindex.html
+// for more information about reindexing.
+func (c *Client) Reindex(sourceIndex, targetIndex string) *Reindexer {
+	return NewReindexer(c, sourceIndex, CopyToTargetIndex(targetIndex))
+}
+
+// ReindexTask copies data from a source index into a destination index.
+//
+// The Reindex API has been introduced in Elasticsearch 2.3.0. Notice that
+// there is a Elastic-specific Reindexer that pre-dates the Reindex API from
+// Elasticsearch. If you rely on that, use the ReindexerService via
+// Client.Reindex.
+//
+// See https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-reindex.html
+// for details on the Reindex API.
+func (c *Client) ReindexTask() *ReindexService {
+	return NewReindexService(c)
+}
+
+// TermVectors returns information and statistics on terms in the fields
+// of a particular document.
+func (c *Client) TermVectors(index, typ string) *TermvectorsService {
+	builder := NewTermvectorsService(c)
+	builder = builder.Index(index).Type(typ)
+	return builder
+}
+
+// MultiTermVectors returns information and statistics on terms in the fields
+// of multiple documents.
+func (c *Client) MultiTermVectors() *MultiTermvectorService {
+	return NewMultiTermvectorService(c)
+}
 
 // -- Search APIs --
 
@@ -1236,7 +1312,11 @@ func (c *Client) Percolate() *PercolateService {
 // TODO Search Shards API
 // TODO Search Exists API
 // TODO Validate API
-// TODO Field Stats API
+
+// FieldStats returns statistical information about fields in indices.
+func (c *Client) FieldStats(indices ...string) *FieldStatsService {
+	return NewFieldStatsService(c).Index(indices...)
+}
 
 // Exists checks if a document exists.
 func (c *Client) Exists() *ExistsService {
@@ -1454,6 +1534,21 @@ func (c *Client) NodesInfo() *NodesInfoService {
 	return NewNodesInfoService(c)
 }
 
+// NodesStats retrieves one or more or all of the cluster nodes statistics.
+func (c *Client) NodesStats() *NodesStatsService {
+	return NewNodesStatsService(c)
+}
+
+// TasksCancel cancels tasks running on the specified nodes.
+func (c *Client) TasksCancel() *TasksCancelService {
+	return NewTasksCancelService(c)
+}
+
+// TasksList retrieves the list of tasks running on the specified nodes.
+func (c *Client) TasksList() *TasksListService {
+	return NewTasksListService(c)
+}
+
 // TODO Pending cluster tasks
 // TODO Cluster Reroute
 // TODO Cluster Update Settings
@@ -1491,7 +1586,7 @@ func (c *Client) IndexNames() ([]string, error) {
 		return nil, err
 	}
 	var names []string
-	for name, _ := range res {
+	for name := range res {
 		names = append(names, name)
 	}
 	return names, nil
@@ -1504,14 +1599,6 @@ func (c *Client) IndexNames() ([]string, error) {
 // Notice that you need to specify a URL here explicitly.
 func (c *Client) Ping(url string) *PingService {
 	return NewPingService(c).URL(url)
-}
-
-// Reindex returns a service that will reindex documents from a source
-// index into a target index. See
-// http://www.elastic.co/guide/en/elasticsearch/guide/current/reindex.html
-// for more information about reindexing.
-func (c *Client) Reindex(sourceIndex, targetIndex string) *Reindexer {
-	return NewReindexer(c, sourceIndex, CopyToTargetIndex(targetIndex))
 }
 
 // WaitForStatus waits for the cluster to have the given status.
@@ -1541,12 +1628,4 @@ func (c *Client) WaitForGreenStatus(timeout string) error {
 // See WaitForStatus for more details.
 func (c *Client) WaitForYellowStatus(timeout string) error {
 	return c.WaitForStatus("yellow", timeout)
-}
-
-// TermVectors returns information and statistics on terms in the fields
-// of a particular document.
-func (c *Client) TermVectors(index, typ string) *TermvectorsService {
-	builder := NewTermvectorsService(c)
-	builder = builder.Index(index).Type(typ)
-	return builder
 }
