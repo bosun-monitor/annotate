@@ -105,8 +105,9 @@ func (a Annotation) Ask(filter string) (bool, error) {
 		return emptyOrGlob(value, a.Url), nil
 	case "message":
 		return emptyOrGlob(value, a.Message), nil
+	default:
+		return false, fmt.Errorf("invalid keyword: %s", key)
 	}
-	return false, nil
 }
 
 func (ea *EpochAnnotation) AsAnnotation() (a Annotation) {
