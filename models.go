@@ -76,6 +76,21 @@ type EpochAnnotation struct {
 	EndDate   Epoch
 }
 
+// AnnotationsByStartID is a Type to sort by start time then by id
+type AnnotationsByStartID Annotations
+
+func (b AnnotationsByStartID) Len() int      { return len(b) }
+func (b AnnotationsByStartID) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
+func (b AnnotationsByStartID) Less(i, j int) bool {
+	if b[i].StartDate.Time.Before(b[j].StartDate.Time) {
+		return true
+	}
+	if b[i].StartDate.Time.After(b[j].StartDate.Time) {
+		return false
+	}
+	return b[i].Id < b[j].Id
+}
+
 func emptyOrGlob(userVal, fieldVal string) bool {
 	if userVal == "empty" && fieldVal == "" {
 		return true
