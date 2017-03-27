@@ -173,8 +173,8 @@ func (e *Elastic) GetFieldValues(field string) ([]string, error) {
 }
 
 func (e *Elastic) InitBackend() error {
-        var err error
-	var ec *elastic.Client	
+	var err error
+	var ec *elastic.Client
 
 	if e.simpleClient {
 		ec, err = elastic.NewSimpleClient(elastic.SetURL(e.urls...))
